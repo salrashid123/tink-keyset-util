@@ -57,10 +57,6 @@ github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpE
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164 h1:yhVO0Yhq84FjdcotvFFvDJRNHJ7mO743G12VdcW4Evc=
-github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164/go.mod h1:HhtDVdE/PRZFRia834tkmcwuscnaAzda1RJUW9Pr3Rg=
-github.com/tink-crypto/tink-go-gcpkms v0.0.0-20230602082706-31d0d09ccc8d h1:+In5BwTMe2nF3FC6LrYqg71jDyaOOMZ4EQBFUhFq23g=
-github.com/tink-crypto/tink-go-gcpkms v0.0.0-20230602082706-31d0d09ccc8d/go.mod h1:TXKMH7TDt0h7QXtI9TdYPyly6xZL+ooPpbw30qekmEc=
 github.com/tink-crypto/tink-go-gcpkms/v2 v2.1.0 h1:A/2tIdYXqUuVZeWy0Yq/PWKsXgebzMyh5mLbpNEMVUo=
 github.com/tink-crypto/tink-go-gcpkms/v2 v2.1.0/go.mod h1:QXPc/i5yUEWWZ4lbe2WOam1kDdrXjGHRjl0Lzo7IQDU=
 github.com/tink-crypto/tink-go/v2 v2.1.0 h1:QXFBguwMwTIaU17EgZpEJWsUSc60b1BAGTzBIoMdmok=

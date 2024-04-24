@@ -295,7 +295,6 @@ func (h *KeySetUtil) GetRawEcdsaPrivateKey(keyID uint32) ([]byte, error) {
 
 func (h *KeySetUtil) GetRawEcdsaPublicKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
-		keysetHandle.KeysetInfo().PrimaryKeyId
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == EcdsaVerifierTypeURL {
 				kserialized := k.KeyData.Value
