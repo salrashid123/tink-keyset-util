@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/tink-crypto/tink-go/v2/aead/subtle"
 	"github.com/tink-crypto/tink-go/v2/insecurecleartextkeyset"
 	"github.com/tink-crypto/tink-go/v2/keyset"
 	"github.com/tink-crypto/tink-go/v2/tink"
@@ -330,4 +331,80 @@ func createOutputPrefix(size int, startByte byte, keyID uint32) string {
 
 func bytesToBigInt(v []byte) *big.Int {
 	return new(big.Int).SetBytes(v)
+}
+
+// *******************************************************
+
+func CreateAES256_GCM(rawKey []byte, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+
+	tk, err := subtle.NewAESGCM(rawKey)
+	if err != nil {
+		return nil, err
+	}
+	k := &gcmpb.AesGcmKey{
+		Version:  0,
+		KeyValue: tk.Key(),
+	}
+
+	keyserialized, err := proto.Marshal(k)
+	if err != nil {
+		return nil, err
+	}
+
+	var bufbytes []byte
+	if kekaead == nil {
+		keysetKey := &tinkpb.Keyset_Key{
+			KeyData: &tinkpb.KeyData{
+				TypeUrl:         AesGcmKeyTypeURL,
+				KeyMaterialType: tinkpb.KeyData_SYMMETRIC,
+				Value:           keyserialized,
+			},
+			KeyId:            keyid,
+			Status:           tinkpb.KeyStatusType_ENABLED,
+			OutputPrefixType: tinkpb.OutputPrefixType_TINK,
+		}
+
+		ks := &tinkpb.Keyset{
+			PrimaryKeyId: keyid,
+			Key:          []*tinkpb.Keyset_Key{keysetKey},
+		}
+
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.Write(ks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+	} else {
+
+		ciphertext, err := kekaead.Encrypt(keyserialized, []byte(""))
+		if err != nil {
+			return nil, err
+		}
+
+		ksi := &tinkpb.KeysetInfo{
+			PrimaryKeyId: keyid,
+			KeyInfo: []*tinkpb.KeysetInfo_KeyInfo{
+				{
+					TypeUrl:          AesGcmKeyTypeURL,
+					Status:           tinkpb.KeyStatusType_ENABLED,
+					KeyId:            keyid,
+					OutputPrefixType: tinkpb.OutputPrefixType_TINK,
+				},
+			},
+		}
+
+		eks := &tinkpb.EncryptedKeyset{
+			EncryptedKeyset: ciphertext,
+			KeysetInfo:      ksi,
+		}
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.WriteEncrypted(eks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+
+	}
+	return bufbytes, nil
 }
