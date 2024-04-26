@@ -8,8 +8,17 @@ Use both these functions will allow you to encrypt or sign some data with Tink a
 
 You can also use this library to embed an *external* AES-GCM key *into* a Tink insecure or encrypted keyset.
 
+---
+
+This repo is a generic implementation of 
+
+* [Importing and extracting external keys for BigQuery AEAD Tink KeySets](https://github.com/salrashid123/bq_aead_key)
+
+---
 
 ### Key export
+
+The key types supported are:
 
 * `GetRawAesGcmKey()`
 
