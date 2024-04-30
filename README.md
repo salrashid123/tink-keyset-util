@@ -6,7 +6,7 @@ This repo also also allows you a way to remove the prefix added by Tink to most 
 
 Using both these functions will allow you to encrypt or sign some data with Tink and use off the shelf libraries to decrypt/verify later.
 
--- `Export Key`
+- `Export Key`
 
 For key extraction, consider the following `AESGCM` keyset:
 
@@ -37,6 +37,8 @@ This sample will decode the proto and show the raw encryption key which you can 
 $ go run aes_export/insecurekeyset/main.go --insecure-key-set keysets/aes_gcm_1.bin 
 		Raw key: 9d17bL1kuWVfEfn9skFI7Caost/X/Qf1/Wafl14gyGQ=
 ```
+
+---
 
 - `Extract CipherText`
 
