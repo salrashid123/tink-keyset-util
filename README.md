@@ -45,7 +45,9 @@ For an end-to-end example with AESGCM, see [example/aes_export/insecurekeyset/ma
 
 ---
 
-You can also use this library to embed an *external* AES-GCM key *into* a Tink insecure or encrypted keyset.  In other words, if you have a raw aes gcm key, you can embed that into a TINK keyset.  In other words, if you already have an AES-GCM key, you can use this library to create a tink keyset with that key.  see ]example/aes_import/insecurekeyset/main.go](example/aes_import/insecurekeyset/main.go)
+You can also use this library to embed an *external* AES-GCM key *into* a Tink insecure or encrypted keyset.  In other words, if you have a raw aes gcm key, you can embed that into a TINK keyset.  
+
+In other words, if you already have an AES-GCM key, you can use this library to create a tink keyset with that key.  see [example/aes_import/insecurekeyset/main.go](example/aes_import/insecurekeyset/main.go)
 
 ---
 
