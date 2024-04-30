@@ -6,6 +6,7 @@ This repo also also allows you a way to remove the prefix added by Tink to most 
 
 Using both these functions will allow you to encrypt or sign some data with Tink and use off the shelf libraries to decrypt/verify later.
 
+-- `Export Key`
 
 For key extraction, consider the following `AESGCM` keyset:
 
@@ -37,6 +38,8 @@ $ go run aes_export/insecurekeyset/main.go --insecure-key-set keysets/aes_gcm_1.
 		Raw key: 9d17bL1kuWVfEfn9skFI7Caost/X/Qf1/Wafl14gyGQ=
 ```
 
+- `Extract CipherText`
+
 If you use TINK to encrypt any data, then the ciphertext can have various prefixes added in by Tink.  Which means even with the raw key, the ciphertext wont decrypt.  These prefixes are descried in [TINK wire format prefixes](https://developers.google.com/tink/wire-format)
 
 This library will detect the output type declared in the keyset, then remove the prefix value if `outputPrefix=TINK` was set using the primary KEYID so you can decrypt easily.   
@@ -44,6 +47,8 @@ This library will detect the output type declared in the keyset, then remove the
 For an end-to-end example with AESGCM, see [example/aes_export/insecurekeyset/main.go](example/aes_export/insecurekeyset/main.go)
 
 ---
+
+- `Import Key`
 
 You can also use this library to embed an *external* AES-GCM key *into* a Tink insecure or encrypted keyset.  In other words, if you have a raw aes gcm key, you can embed that into a TINK keyset.  
 
@@ -171,7 +176,9 @@ For prefix redaction, supply the ciphertext provided by a prior tink operation.
 ```
 
 
-THe following uses [tinkey](https://github.com/tink-crypto/tink-tinkey) to create binary keysets and then extract out the embedded keys
+THe following uses [tinkey](https://github.com/tink-crypto/tink-tinkey) to create binary keysets and then extract out the embedded keys.
+
+You can either use the existing keysets or generate your own using [tinkey](https://developers.google.com/tink/install-tinkey).  For encrypted keysets, you certainly need to generate your own keysets.
 
 for reference also see
 * [tink_samples](https://github.com/salrashid123/tink_samples)
@@ -179,12 +186,10 @@ for reference also see
 
 ### Insecure KeySet
 
-```bash
-$ tinkey list-key-templates
-```
+- `AES256_GCM`
 
 ```bash
-## AES256_GCM
+$ tinkey list-key-templates
 $ tinkey create-keyset --key-template=AES256_GCM --out-format=binary --out=/tmp/1.bin
 
 $ tinkey rotate-keyset --key-template=AES256_GCM \
@@ -199,46 +204,63 @@ $ tinkey rotate-keyset --key-template=AES256_GCM \
 
 $ tinkey list-keyset --in-format=binary --in=example/keysets/aes_gcm_1.bin
 
-primary_key_id: 4112199248
-key_info {
-  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
-  status: ENABLED
-  key_id: 536538909
-  output_prefix_type: TINK
-}
-key_info {
-  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
-  status: ENABLED
-  key_id: 86374772
-  output_prefix_type: TINK
-}
-key_info {
-  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
-  status: ENABLED
-  key_id: 4112199248
-  output_prefix_type: TINK
-}
+	primary_key_id: 4112199248
+	key_info {
+	  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
+	  status: ENABLED
+	  key_id: 536538909
+	  output_prefix_type: TINK
+	}
+	key_info {
+	  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
+	  status: ENABLED
+	  key_id: 86374772
+	  output_prefix_type: TINK
+	}
+	key_info {
+	  type_url: "type.googleapis.com/google.crypto.tink.AesGcmKey"
+	  status: ENABLED
+	  key_id: 4112199248
+	  output_prefix_type: TINK
+	}
 
-$ go run aes_export/insecurekeyset/main.go --insecure-key-set keysets/aes_gcm_1.bin 
+$ go run aes_export/insecurekeyset/main.go --insecure-key-set keysets/aes_gcm_1.bin
+``` 
 
-# AES256_SIV
+- `AES256_SIV`
+
+```bash
 $ tinkey create-keyset --key-template=AES256_SIV --out-format=binary --out=example/keysets/aes_siv.bin
+
 $ go run aes_siv/insecurekeyset/main.go --insecure-key-set keysets/aes_siv.bin 
+```
 
-## AES256_CTR_HMAC_SHA256
+- `AES256_CTR_HMAC_SHA256`
+
+```bash
 $ tinkey create-keyset --key-template=AES256_CTR_HMAC_SHA256 --out-format=binary --out=example/keysets/aes_ctr_hmac_sha256.bin
-$ go run aes_ctr/insecurekeyset/main.go --insecure-key-set keysets/aes_ctr_hmac_sha256.bin 
 
-# RSA_SSA_PKCS1_3072_SHA256_F4
+$ go run aes_ctr/insecurekeyset/main.go --insecure-key-set keysets/aes_ctr_hmac_sha256.bin 
+```
+
+- `RSA_SSA_PKCS1_3072_SHA256_F4`
+
+```bash
 $ tinkey create-keyset --key-template=RSA_SSA_PKCS1_3072_SHA256_F4 --out-format=binary --out=example/keysets/rsa_1_private.bin
 $ tinkey create-public-keyset --in-format=binary --in=example/keysets/rsa_1_private.bin --out-format=binary --out=example/keysets/rsa_1_public.bin
+
 $ go run rsa/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_private.bin 
 $ go run rsa/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_public.bin 
+```
 
-# ECDSA_P256
+- `ECDSA_P256`
+
+```bash
 $ tinkey create-keyset --key-template=ECDSA_P256 --out-format=binary --out=example/keysets/ecc_1_private.bin
 $ tinkey create-public-keyset --in=example/keysets/ecc_1_private.bin --in-format=binary --out-format=binary --out=example/keysets/ecc_1_public.bin
+
 $ go run ecc/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_private.bin 
+
 $ go run ecc/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_public.bin 
 ```
 

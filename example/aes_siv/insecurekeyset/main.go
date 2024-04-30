@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/hex"
 	"flag"
 	"log"
 	"os"
@@ -62,15 +62,28 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Encrypted Data: %s", base64.StdEncoding.EncodeToString(ec))
+	log.Printf("Encrypted Data: %s", hex.EncodeToString(ec))
 
 	rk, err := ku.GetRawAesSivKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
+	log.Printf("Raw key: %s", hex.EncodeToString(rk))
 
+	re, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Raw Encrypted Data: %s", hex.EncodeToString(re))
+
+	// i cound't find a reliable aes-siv library in golang but i did verify the
+	//  output using https://artjomb.github.io/cryptojs-extension/
+	// ciphertext: 5105f3e4c17aaad6349c2e73addae28a53704e
+	// key:  ab31f24a4e61c819b5c9fde1257f21ea957f6ec597e9cc481b2fb6f05f871b29a8921e1cc79ec9f8c5a967f316cf0d7924a109c2672ccc310d90ac9d93f0074e
+	// aad: some additional data
+
+	// just to test the reverse
 	// recreate the tink aes-siv keyset from scratch but specify the siv key we just go
 
 	k := &sivpb.AesSivKey{
