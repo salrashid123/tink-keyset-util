@@ -124,6 +124,12 @@ see the [example/](example/) folder for details
 
 >> this library is **NOT** supported by google
 
+---
+
+also note that i'm pinning `github.com/tink-crypto/tink-go/v2@v2.1.0` because the inner "Key" object was removed in [48cf8fd](https://github.com/tink-crypto/tink-go/commit/48cf8fda80bd7a28cdfcb7696cc8cb2bcd3cb6b1)
+
+---
+
 ### Usage
 
 For key extraction supply the keyset.
