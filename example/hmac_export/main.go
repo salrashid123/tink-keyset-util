@@ -3,16 +3,17 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
+	"crypto/hmac"
+	"crypto/sha256"
+
 	"encoding/base64"
 	"flag"
 	"log"
 	"os"
 
-	"github.com/tink-crypto/tink-go/v2/aead"
 	"github.com/tink-crypto/tink-go/v2/insecurecleartextkeyset"
 	"github.com/tink-crypto/tink-go/v2/keyset"
+	"github.com/tink-crypto/tink-go/v2/mac"
 
 	// commonpb "github.com/tink-crypto/tink-go/v2/proto/common_go_proto"
 	// ecdsapb "github.com/tink-crypto/tink-go/v2/proto/ecdsa_go_proto"
@@ -23,7 +24,7 @@ import (
 )
 
 var (
-	insecureKeySetFile = flag.String("insecure-key-set", "keysets/aes_gcm_1.bin", "Parse a cleartext keyset")
+	insecureKeySetFile = flag.String("insecure-key-set", "", "Parse a cleartext keyset")
 )
 
 func main() {
@@ -51,40 +52,36 @@ func main() {
 		log.Fatal(err)
 	}
 
-	a, err := aead.New(keysetHandle)
+	a, err := mac.New(keysetHandle)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ec, err := a.Encrypt([]byte("foo"), []byte("some additional data"))
+	plaintText := "foo"
+	ec, err := a.ComputeMAC([]byte(plaintText))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Encrypted Data: %s", base64.StdEncoding.EncodeToString(ec))
+	log.Printf("Tink HMAC: %s", base64.StdEncoding.EncodeToString(ec))
 
-	rk, err := ku.GetRawAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.GetRawHMACKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
+	log.Printf("rawKey key: %s", base64.StdEncoding.EncodeToString(rk))
 
-	aesCipher, err := aes.NewCipher(rk)
-	if err != nil {
-		log.Fatal(err)
-	}
-	rawAES, err := cipher.NewGCM(aesCipher)
-	if err != nil {
-		log.Fatal(err)
-	}
 	ecca, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
-	plaintext, err := rawAES.Open(nil, ecca[:keysetutil.AESGCMIVSize], ecca[keysetutil.AESGCMIVSize:], []byte("some additional data"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(string(plaintext))
+
+	log.Printf("TINK MAC without prefix: %s", base64.StdEncoding.EncodeToString(ecca))
+
+	h := hmac.New(sha256.New, rk)
+	h.Write([]byte(plaintText))
+
+	log.Printf("Recreated HMAC from rawKey: %s\b", base64.StdEncoding.EncodeToString(h.Sum(nil)))
+
 }

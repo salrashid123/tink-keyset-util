@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	insecureKeySetFile = flag.String("insecure-key-set", "keysets/aes_gcm_1.bin", "Parse a cleartext keyset")
+	insecureKeySetFile = flag.String("insecure-key-set", "keysets/aes_gcm_1.json", "Parse a cleartext keyset")
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetBytes))
+	keysetReader := keyset.NewJSONReader(bytes.NewReader(keysetBytes))
 	keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
 	if err != nil {
 		log.Fatal(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"log"
@@ -69,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Raw key: %s", hex.EncodeToString(rk))
+	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
 
 	re, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {

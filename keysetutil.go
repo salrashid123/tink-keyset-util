@@ -8,20 +8,24 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
-	"github.com/tink-crypto/tink-go/v2/aead/subtle"
 	"github.com/tink-crypto/tink-go/v2/insecurecleartextkeyset"
 	"github.com/tink-crypto/tink-go/v2/keyset"
 	"github.com/tink-crypto/tink-go/v2/tink"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
-	aesctrhmac "github.com/tink-crypto/tink-go/v2/proto/aes_ctr_hmac_aead_go_proto"
+	aesctrhmacpb "github.com/tink-crypto/tink-go/v2/proto/aes_ctr_hmac_aead_go_proto"
 	gcmpb "github.com/tink-crypto/tink-go/v2/proto/aes_gcm_go_proto"
 	sivpb "github.com/tink-crypto/tink-go/v2/proto/aes_siv_go_proto"
+	common_go_proto "github.com/tink-crypto/tink-go/v2/proto/common_go_proto"
 	commonpb "github.com/tink-crypto/tink-go/v2/proto/common_go_proto"
 	ecdsapb "github.com/tink-crypto/tink-go/v2/proto/ecdsa_go_proto"
+	hmacpb "github.com/tink-crypto/tink-go/v2/proto/hmac_go_proto"
 	rsppb "github.com/tink-crypto/tink-go/v2/proto/rsa_ssa_pkcs1_go_proto"
 	tinkpb "github.com/tink-crypto/tink-go/v2/proto/tink_go_proto"
 )
@@ -54,6 +58,8 @@ const (
 	// TinkStartByte is the first byte of the prefix of Tink key types.
 	tinkStartByte = byte(1)
 
+	tagSize = 32
+
 	// RawPrefixSize is the prefix size of Raw key types.
 	// Raw prefix is empty.
 	rawPrefixSize = 0
@@ -67,55 +73,109 @@ const (
 	RsaSsaPkcs1VerifierTypeURL   = "type.googleapis.com/google.crypto.tink.RsaSsaPkcs1PublicKey"
 	EcdsaVerifierTypeURL         = "type.googleapis.com/google.crypto.tink.EcdsaPublicKey"
 	EcdsaPrivateKeyTypeURL       = "type.googleapis.com/google.crypto.tink.EcdsaPrivateKey"
+	HmacKeyTypeURL               = "type.googleapis.com/google.crypto.tink.HmacKey"
 )
 
 func NewTinkKeySetUtil(ctx context.Context, keysetConfig *KeySetUtilConfig) (*KeySetUtil, error) {
 
-	if keysetConfig.KekAEAD == nil {
-		keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetConfig.KeySetBytes))
-		keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
-		if err != nil {
-			return nil, err
-		}
-		tpb := &tinkpb.Keyset{}
+	if json.Valid(keysetConfig.KeySetBytes) {
+		if keysetConfig.KekAEAD == nil {
+			keysetReader := keyset.NewJSONReader(bytes.NewReader(keysetConfig.KeySetBytes))
+			keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
+			if err != nil {
+				return nil, err
+			}
 
-		err = proto.Unmarshal(keysetConfig.KeySetBytes, tpb)
-		if err != nil {
-			return nil, err
+			tpb := &tinkpb.Keyset{}
+
+			err = protojson.Unmarshal(keysetConfig.KeySetBytes, tpb)
+			if err != nil {
+				return nil, err
+			}
+			return &KeySetUtil{
+				keysetHandle: keysetHandle,
+				keysetKeys:   tpb.Key,
+			}, nil
+		} else {
+			kmsaead := keysetConfig.KekAEAD
+			keysetReader := keyset.NewJSONReader(bytes.NewReader(keysetConfig.KeySetBytes))
+			keysetHandle, err := keyset.Read(keysetReader, kmsaead)
+			if err != nil {
+				return nil, err
+			}
+
+			etpb := &tinkpb.EncryptedKeyset{}
+
+			err = protojson.Unmarshal(keysetConfig.KeySetBytes, etpb)
+			if err != nil {
+				return nil, err
+			}
+
+			// https://github.com/tink-crypto/tink-go/issues/4
+			ekeysetBytes, err := keysetConfig.KekAEAD.Decrypt(etpb.EncryptedKeyset, []byte{})
+			if err != nil {
+				return nil, err
+			}
+			tpb := &tinkpb.Keyset{}
+			err = proto.Unmarshal(ekeysetBytes, tpb)
+			if err != nil {
+				return nil, err
+			}
+			return &KeySetUtil{
+				keysetHandle: keysetHandle,
+				keysetKeys:   tpb.Key,
+			}, nil
 		}
-		return &KeySetUtil{
-			keysetHandle: keysetHandle,
-			keysetKeys:   tpb.Key,
-		}, nil
+
 	} else {
-		kmsaead := keysetConfig.KekAEAD
-		keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetConfig.KeySetBytes))
-		keysetHandle, err := keyset.Read(keysetReader, kmsaead)
-		if err != nil {
-			return nil, err
-		}
+		if keysetConfig.KekAEAD == nil {
+			keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetConfig.KeySetBytes))
+			keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
+			if err != nil {
+				return nil, err
+			}
 
-		etpb := &tinkpb.EncryptedKeyset{}
+			tpb := &tinkpb.Keyset{}
 
-		err = proto.Unmarshal(keysetConfig.KeySetBytes, etpb)
-		if err != nil {
-			return nil, err
-		}
+			// todo, support json keysets		protojson.Unmarshal()
+			err = proto.Unmarshal(keysetConfig.KeySetBytes, tpb)
+			if err != nil {
+				return nil, err
+			}
+			return &KeySetUtil{
+				keysetHandle: keysetHandle,
+				keysetKeys:   tpb.Key,
+			}, nil
+		} else {
+			kmsaead := keysetConfig.KekAEAD
+			keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetConfig.KeySetBytes))
+			keysetHandle, err := keyset.Read(keysetReader, kmsaead)
+			if err != nil {
+				return nil, err
+			}
 
-		// https://github.com/tink-crypto/tink-go/issues/4
-		ekeysetBytes, err := keysetConfig.KekAEAD.Decrypt(etpb.EncryptedKeyset, []byte{})
-		if err != nil {
-			return nil, err
+			etpb := &tinkpb.EncryptedKeyset{}
+
+			err = proto.Unmarshal(keysetConfig.KeySetBytes, etpb)
+			if err != nil {
+				return nil, err
+			}
+
+			// https://github.com/tink-crypto/tink-go/issues/4
+			ekeysetBytes, err := keysetConfig.KekAEAD.Decrypt(etpb.EncryptedKeyset, []byte{})
+			if err != nil {
+				return nil, err
+			}
+			tpb := &tinkpb.Keyset{}
+			err = proto.Unmarshal(ekeysetBytes, tpb)
+			if err != nil {
+				return nil, err
+			}
+			return &KeySetUtil{
+				keysetHandle: keysetHandle,
+				keysetKeys:   tpb.Key,
+			}, nil
 		}
-		tpb := &tinkpb.Keyset{}
-		err = proto.Unmarshal(ekeysetBytes, tpb)
-		if err != nil {
-			return nil, err
-		}
-		return &KeySetUtil{
-			keysetHandle: keysetHandle,
-			keysetKeys:   tpb.Key,
-		}, nil
 	}
 }
 
@@ -129,7 +189,7 @@ func (h *KeySetUtil) GetRawCipherText(ciphertext []byte, keyID uint32) ([]byte, 
 			} else if k.OutputPrefixType == tinkpb.OutputPrefixType_RAW {
 				ecca = ciphertext
 			} else {
-				return nil, fmt.Errorf("unsupporte outputprefix %s", k.OutputPrefixType.String())
+				return nil, fmt.Errorf("unsupported outputprefix %s", k.OutputPrefixType.String())
 			}
 			return ecca, nil
 		}
@@ -192,7 +252,7 @@ func (h *KeySetUtil) GetRawAesCtrHmacAeadKey(keyID uint32) ([]byte, []byte, erro
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == AesCtrHmacTypeURL {
-				aeskey := &aesctrhmac.AesCtrHmacAeadKey{}
+				aeskey := &aesctrhmacpb.AesCtrHmacAeadKey{}
 				err := proto.Unmarshal(k.KeyData.Value, aeskey)
 				if err != nil {
 					return nil, nil, err
@@ -257,15 +317,6 @@ func (h *KeySetUtil) GetRawRsaSsaPkcs1PublicKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-// getECDSAParamNames returns the string representations of each parameter in
-// the given ECDSAParams.
-func getECDSAParamNames(params *ecdsapb.EcdsaParams) (string, string, string) {
-	hashName := commonpb.HashType_name[int32(params.GetHashType())]
-	curveName := commonpb.EllipticCurveType_name[int32(params.GetCurve())]
-	encodingName := ecdsapb.EcdsaSignatureEncoding_name[int32(params.GetEncoding())]
-	return hashName, curveName, encodingName
-}
-
 func (h *KeySetUtil) GetRawEcdsaPrivateKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
@@ -321,6 +372,24 @@ func (h *KeySetUtil) GetRawEcdsaPublicKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
+func (h *KeySetUtil) GetRawHMACKey(keyID uint32) ([]byte, error) {
+	for _, k := range h.keysetKeys {
+		if k.KeyId == keyID {
+			if k.KeyData.TypeUrl == HmacKeyTypeURL {
+				hkey := &hmacpb.HmacKey{}
+				err := proto.Unmarshal(k.KeyData.Value, hkey)
+				if err != nil {
+					return nil, err
+				}
+				return hkey.KeyValue, nil
+			} else {
+				return nil, fmt.Errorf(" KeyType expected %s, found  %s", AesGcmKeyTypeURL, k.KeyData.TypeUrl)
+			}
+		}
+	}
+	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
+}
+
 // https://github.com/google/tink/blob/master/go/core/cryptofmt/cryptofmt.go#L68
 func createOutputPrefix(size int, startByte byte, keyID uint32) string {
 	prefix := make([]byte, size)
@@ -335,15 +404,26 @@ func bytesToBigInt(v []byte) *big.Int {
 
 // *******************************************************
 
-func CreateAES256_GCM(rawKey []byte, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+// only allow certain interfaces through
+type SymmetricKeyType interface {
+	*gcmpb.AesGcmKey | *sivpb.AesSivKey | *aesctrhmacpb.AesCtrHmacAeadKey
+}
 
-	tk, err := subtle.NewAESGCM(rawKey)
-	if err != nil {
-		return nil, err
-	}
-	k := &gcmpb.AesGcmKey{
-		Version:  0,
-		KeyValue: tk.Key(),
+func CreateSymmetricKey[T SymmetricKeyType](key T, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+	var k protoreflect.ProtoMessage
+	var keyURL string
+	switch t := any(key).(type) {
+	case *gcmpb.AesGcmKey:
+		keyURL = AesGcmKeyTypeURL
+		k = t
+	case *sivpb.AesSivKey:
+		keyURL = AesSivKeyTypeURL
+		k = t
+	case *aesctrhmacpb.AesCtrHmacAeadKey:
+		keyURL = AesCtrHmacTypeURL
+		k = t
+	default:
+		return nil, fmt.Errorf("symmetric keytype must be one of AesCtrHmacTypeURL, AesGcmKeyTypeURL, AesSivKeyTypeURL got %s", t)
 	}
 
 	keyserialized, err := proto.Marshal(k)
@@ -355,13 +435,13 @@ func CreateAES256_GCM(rawKey []byte, keyid uint32, format tinkpb.OutputPrefixTyp
 	if kekaead == nil {
 		keysetKey := &tinkpb.Keyset_Key{
 			KeyData: &tinkpb.KeyData{
-				TypeUrl:         AesGcmKeyTypeURL,
+				TypeUrl:         keyURL,
 				KeyMaterialType: tinkpb.KeyData_SYMMETRIC,
 				Value:           keyserialized,
 			},
 			KeyId:            keyid,
 			Status:           tinkpb.KeyStatusType_ENABLED,
-			OutputPrefixType: tinkpb.OutputPrefixType_TINK,
+			OutputPrefixType: format,
 		}
 
 		ks := &tinkpb.Keyset{
@@ -386,10 +466,84 @@ func CreateAES256_GCM(rawKey []byte, keyid uint32, format tinkpb.OutputPrefixTyp
 			PrimaryKeyId: keyid,
 			KeyInfo: []*tinkpb.KeysetInfo_KeyInfo{
 				{
-					TypeUrl:          AesGcmKeyTypeURL,
+					TypeUrl:          keyURL,
 					Status:           tinkpb.KeyStatusType_ENABLED,
 					KeyId:            keyid,
-					OutputPrefixType: tinkpb.OutputPrefixType_TINK,
+					OutputPrefixType: format,
+				},
+			},
+		}
+
+		eks := &tinkpb.EncryptedKeyset{
+			EncryptedKeyset: ciphertext,
+			KeysetInfo:      ksi,
+		}
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.WriteEncrypted(eks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+
+	}
+	return bufbytes, nil
+}
+
+func CreateHMACKey(rawKey []byte, keyid uint32, hashType common_go_proto.HashType, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+
+	k := &hmacpb.HmacKey{
+		Version: 0,
+		Params: &hmacpb.HmacParams{
+			Hash:    hashType,
+			TagSize: tagSize,
+		},
+		KeyValue: rawKey,
+	}
+
+	keyserialized, err := proto.Marshal(k)
+	if err != nil {
+		return nil, err
+	}
+
+	var bufbytes []byte
+	if kekaead == nil {
+		keysetKey := &tinkpb.Keyset_Key{
+			KeyData: &tinkpb.KeyData{
+				TypeUrl:         HmacKeyTypeURL,
+				KeyMaterialType: tinkpb.KeyData_SYMMETRIC,
+				Value:           keyserialized,
+			},
+			KeyId:            keyid,
+			Status:           tinkpb.KeyStatusType_ENABLED,
+			OutputPrefixType: format,
+		}
+
+		ks := &tinkpb.Keyset{
+			PrimaryKeyId: keyid,
+			Key:          []*tinkpb.Keyset_Key{keysetKey},
+		}
+
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.Write(ks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+	} else {
+
+		ciphertext, err := kekaead.Encrypt(keyserialized, []byte(""))
+		if err != nil {
+			return nil, err
+		}
+
+		ksi := &tinkpb.KeysetInfo{
+			PrimaryKeyId: keyid,
+			KeyInfo: []*tinkpb.KeysetInfo_KeyInfo{
+				{
+					TypeUrl:          HmacKeyTypeURL,
+					Status:           tinkpb.KeyStatusType_ENABLED,
+					KeyId:            keyid,
+					OutputPrefixType: format,
 				},
 			},
 		}
