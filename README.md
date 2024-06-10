@@ -8,7 +8,7 @@ This repo also also allows for a way to _remove the prefix_ added by Tink to mos
 
 Using both these functions will allow you to encrypt or sign some data with Tink and use off the shelf libraries to decrypt/verify later.
 
-Basically, this is a way to remove the extra bits tink uses to make off-the-shelf compatibility a bit challenging.
+Basically, this is a way to remove the extra bits tink uses to make off-the-shelf compatibility a bit less challenging.
 
 
 - **Export Key**
