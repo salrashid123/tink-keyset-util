@@ -65,14 +65,14 @@ func main() {
 
 	log.Printf("Encrypted Data: %s", hex.EncodeToString(ec))
 
-	rk, err := ku.GetRawAesSivKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.ExportAesSivKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
 
-	re, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	re, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}

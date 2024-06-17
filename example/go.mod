@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	github.com/salrashid123/tink-keyset-util v0.0.0-00010101000000-000000000000
-	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	github.com/tink-crypto/tink-go-gcpkms/v2 v2.1.0
 	github.com/tink-crypto/tink-go/v2 v2.2.0
 	google.golang.org/protobuf v1.33.0

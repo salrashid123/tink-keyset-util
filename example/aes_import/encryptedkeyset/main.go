@@ -45,7 +45,7 @@ func main() {
 		KeyValue: kval,
 	}
 
-	ek, err := keysetutil.CreateSymmetricKey(&k, 4112199248, tinkpb.OutputPrefixType_TINK, kmsaead)
+	ek, err := keysetutil.ImportSymmetricKey(&k, 4112199248, tinkpb.OutputPrefixType_TINK, kmsaead)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,8 +3,13 @@ package keysetutil
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"os"
 	"testing"
@@ -13,8 +18,10 @@ import (
 	"github.com/tink-crypto/tink-go/v2/aead"
 	"github.com/tink-crypto/tink-go/v2/insecurecleartextkeyset"
 	"github.com/tink-crypto/tink-go/v2/keyset"
+	"github.com/tink-crypto/tink-go/v2/mac"
 	gcmpb "github.com/tink-crypto/tink-go/v2/proto/aes_gcm_go_proto"
 	tinkpb "github.com/tink-crypto/tink-go/v2/proto/tink_go_proto"
+	"github.com/tink-crypto/tink-go/v2/signature"
 )
 
 var ()
@@ -22,6 +29,8 @@ var ()
 const (
 	AES_GCM_JSON_KEYSET   = "example/keysets/aes_gcm_1.json"
 	AES_GCM_BINARY_KEYSET = "example/keysets/aes_gcm_1.bin"
+	RSA_BINARY_KEYSET     = "example/keysets/rsa_1_private.bin"
+	HMAC_BINARY_KEYSET    = "example/keysets/hmac_bittag.bin"
 )
 
 func TestReadJSONKeyset(t *testing.T) {
@@ -85,7 +94,7 @@ func TestAESGCMKeyExport(t *testing.T) {
 	ec, err := a.Encrypt(plainText, []byte("some additional data"))
 	require.NoError(t, err)
 
-	rk, err := ku.GetRawAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.ExportAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	require.NoError(t, err)
 
 	aesCipher, err := aes.NewCipher(rk)
@@ -94,7 +103,7 @@ func TestAESGCMKeyExport(t *testing.T) {
 	rawAES, err := cipher.NewGCM(aesCipher)
 	require.NoError(t, err)
 
-	ecca, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	ecca, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	require.NoError(t, err)
 
 	decryptedText, err := rawAES.Open(nil, ecca[:AESGCMIVSize], ecca[AESGCMIVSize:], []byte("some additional data"))
@@ -126,7 +135,7 @@ func TestAESGCMKeyImport(t *testing.T) {
 		KeyValue: kval,
 	}
 
-	ek, err := CreateSymmetricKey(&k, uint32(keyid), tinkpb.OutputPrefixType_TINK, nil)
+	ek, err := ImportSymmetricKey(&k, uint32(keyid), tinkpb.OutputPrefixType_TINK, nil)
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(ek)
@@ -164,5 +173,81 @@ func TestAESGCMKeyImport(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, dec2, dataToEncrypt)
+}
+
+func TestRSASignatureExport(t *testing.T) {
+
+	keysetBytes, err := os.ReadFile(RSA_BINARY_KEYSET)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	ku, err := NewTinkKeySetUtil(ctx, &KeySetUtilConfig{
+		KeySetBytes: keysetBytes,
+	})
+	require.NoError(t, err)
+
+	keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetBytes))
+
+	keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
+	require.NoError(t, err)
+
+	s, err := signature.NewSigner(keysetHandle)
+	require.NoError(t, err)
+
+	rk, err := ku.ExportRsaSsaPkcs1PrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	key, err := x509.ParsePKCS1PrivateKey(rk)
+	require.NoError(t, err)
+
+	msg := []byte("this data needs to be signed")
+
+	sig, err := s.Sign(msg)
+	require.NoError(t, err)
+
+	digest := sha256.Sum256(msg)
+
+	st, err := ku.ExportCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	err = rsa.VerifyPKCS1v15(&key.PublicKey, crypto.SHA256, digest[:], st)
+	require.NoError(t, err)
+}
+
+func TestHMACExport(t *testing.T) {
+
+	keysetBytes, err := os.ReadFile(HMAC_BINARY_KEYSET)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	ku, err := NewTinkKeySetUtil(ctx, &KeySetUtilConfig{
+		KeySetBytes: keysetBytes,
+	})
+	require.NoError(t, err)
+
+	keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetBytes))
+
+	keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
+	require.NoError(t, err)
+
+	a, err := mac.New(keysetHandle)
+	require.NoError(t, err)
+
+	plaintText := "foo"
+	ec, err := a.ComputeMAC([]byte(plaintText))
+	require.NoError(t, err)
+
+	rk, err := ku.ExportHMACKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	ecca, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	h := hmac.New(sha256.New, rk)
+	h.Write([]byte(plaintText))
+
+	require.Equal(t, ecca, h.Sum(nil))
 
 }

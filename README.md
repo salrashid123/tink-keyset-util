@@ -77,41 +77,41 @@ This repo is a generic implementation of
 
 The key types supported are:
 
-* `GetRawAesGcmKey()`
+* `ExportAesGcmKey()`
 
   Extract the raw AES-GCM key from the keyset.  You can use this key to decrypt/encrypt data using standard google AES library
 
-* `GetRawAesSivKey()`
+* `ExportAesSivKey()`
 
    Extract the raw AES-SIV key from the keyset.  You can use this key to decrypt/encrypt data using standard google AES library
 
-* `GetRawAesCtrHmacAeadKey()`
+* `ExportAesCtrHmacAeadKey()`
 
    Extract the raw AES and HMAC key from the keyset.  Using off the shelf libraries requires reversing [this](https://developers.google.com/tink/streaming-aead/aes_ctr_hmac_streaming) process.
 
-* `GetRawRsaSsaPkcs1PrivateKey()`
+* `ExportRsaSsaPkcs1PrivateKey()`
 
    Extract the RSA Private key from the keyset as DER bytes.
 
-* `GetRawRsaSsaPkcs1PublicKey()`
+* `ExportRsaSsaPkcs1PublicKey()`
 
    Extract the RSA Public key from the keyset as DER bytes.
 
-* `GetRawEcdsaPrivateKey()`
+* `ExportEcdsaPrivateKey()`
 
    Extract the ECC Private key from the keyset as DER bytes.
 
-* `GetRawEcdsaPublicKey()`
+* `ExportEcdsaPublicKey()`
   
    Extract the ECC Public key from the keyset as DER bytes.
 
-* `GetRawHMACKey()`
+* `ExportHMACKey()`
   
    Extract the HMAC the keyset.
 
 To process TINK encoded ciphertext or data
 
-* `GetRawCipherText()`
+* `ExportCipherText()`
 
   Returns the ciphertext or signature without the TINK prefix values.
 
@@ -119,13 +119,13 @@ To process TINK encoded ciphertext or data
 
 ### Key Import
 
-* `CreateSymmetricKey()`
+* `ImportSymmetricKey()`
 
   Supply the raw aes key, the keyID to use and the output prefix to apply for this keyset
 
   If an external KMS KEK is provided, the output will be an encryptedKeySet
 
-* `CreateHMACKey()`
+* `ImportHMACKey()`
 
    Unimplemented but easy to do.  see [tink_samples/external_hmac](https://github.com/salrashid123/tink_samples/tree/main/external_hmac)
 
@@ -151,7 +151,7 @@ For key extraction supply the keyset.
 	})
 
 	// print the raw key
-	rk, err := ku.GetRawAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.ExportAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
 ```
 
@@ -174,7 +174,7 @@ For prefix redaction, supply the ciphertext provided by a prior tink operation.
 	})
 
 	// get the raw key from the keyset
-	rk, err := ku.GetRawAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.ExportAesGcmKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	log.Printf("Raw key: %s", base64.StdEncoding.EncodeToString(rk))
 
 	// initialize aes cipher from this extracted key
@@ -182,7 +182,7 @@ For prefix redaction, supply the ciphertext provided by a prior tink operation.
 	rawAES, err := cipher.NewGCM(aesCipher)
 
 	// omit the ciphertext prefix
-	ecca, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	ecca, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 
 	// decrypt the tinkencrypted data using the raw ciphertext and raw aes key
 	plaintext, err := rawAES.Open(nil, ecca[:keysetutil.AESGCMIVSize], ecca[keysetutil.AESGCMIVSize:], []byte("some additional data"))
@@ -354,7 +354,7 @@ For an encrypted keyset, supply the kek aead:
 	ek, err := keysetutil.CreateSymmetricKey(k, uint32(*keyid), tinkpb.OutputPrefixType_TINK, kmsaead)
 ```
 
-```log
+```bash
 $ go run aes_import/encryptedkeyset/main.go --master-key-uri=$MASTERKEY
 
 2024/04/25 22:24:20 Tink Keyset:

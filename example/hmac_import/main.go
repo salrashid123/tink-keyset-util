@@ -34,7 +34,7 @@ func main() {
 	// note, we're using output of OutputPrefixType_RAW just so we can easily confirm the key+data we used is correct.
 	//  other than that, you can ofcourse just set the prefix to OutputPrefixType_TINK but then you'd have to process
 	// the mac and account for the prefix.  See hmac_export/main.go about that
-	ek, err := keysetutil.CreateHMACKey([]byte(*key), uint32(*keyid), common_go_proto.HashType_SHA256, tinkpb.OutputPrefixType_RAW, nil)
+	ek, err := keysetutil.ImportHMACKey([]byte(*key), uint32(*keyid), common_go_proto.HashType_SHA256, tinkpb.OutputPrefixType_RAW, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

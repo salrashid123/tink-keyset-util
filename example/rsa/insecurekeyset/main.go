@@ -55,7 +55,7 @@ func main() {
 	}
 
 	if ku.GetKeySetTypeURL() == keysetutil.RsaSsaPkcs1VerifierTypeURL {
-		pk, err := ku.GetRawRsaSsaPkcs1PublicKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+		pk, err := ku.ExportRsaSsaPkcs1PublicKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -72,7 +72,7 @@ func main() {
 		}
 	} else if ku.GetKeySetTypeURL() == keysetutil.RsaSsaPkcs1PrivateKeyTypeURL {
 
-		rk, err := ku.GetRawRsaSsaPkcs1PrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+		rk, err := ku.ExportRsaSsaPkcs1PrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func main() {
 
 			digest := sha256.Sum256(msg)
 
-			st, err := ku.GetRawCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
+			st, err := ku.ExportCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
 			if err != nil {
 				log.Fatal(err)
 			}

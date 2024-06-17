@@ -78,7 +78,7 @@ func main() {
 	// 	},
 	// }
 
-	ek, err := keysetutil.CreateSymmetricKey(&k, uint32(*keyid), tinkpb.OutputPrefixType_TINK, nil)
+	ek, err := keysetutil.ImportSymmetricKey(&k, uint32(*keyid), tinkpb.OutputPrefixType_TINK, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

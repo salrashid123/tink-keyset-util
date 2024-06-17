@@ -66,7 +66,7 @@ func main() {
 
 	log.Printf("Encrypted Data: %s", base64.StdEncoding.EncodeToString(ec))
 
-	rk, hk, err := ku.GetRawAesCtrHmacAeadKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, hk, err := ku.ExportAesCtrHmacAeadKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func main() {
 	log.Printf("HMAC key: %s", base64.StdEncoding.EncodeToString(hk))
 	// https://github.com/tink-crypto/tink/blob/master/go/aead/aes_ctr_hmac_aead_key_manager.go#L54
 
-	rawCipherTextWithMAC, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	rawCipherTextWithMAC, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}

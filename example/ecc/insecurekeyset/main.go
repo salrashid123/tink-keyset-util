@@ -57,7 +57,7 @@ func main() {
 	}
 
 	if ku.GetKeySetTypeURL() == keysetutil.EcdsaVerifierTypeURL {
-		pk, err := ku.GetRawEcdsaPublicKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+		pk, err := ku.ExportEcdsaPublicKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func main() {
 		}
 	} else if ku.GetKeySetTypeURL() == keysetutil.EcdsaPrivateKeyTypeURL {
 
-		rk, err := ku.GetRawEcdsaPrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+		rk, err := ku.ExportEcdsaPrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,7 +108,7 @@ func main() {
 
 			digest := sha256.Sum256(msg)
 
-			st, err := ku.GetRawCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
+			st, err := ku.ExportCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
 			if err != nil {
 				log.Fatal(err)
 			}

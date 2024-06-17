@@ -179,7 +179,7 @@ func NewTinkKeySetUtil(ctx context.Context, keysetConfig *KeySetUtilConfig) (*Ke
 	}
 }
 
-func (h *KeySetUtil) GetRawCipherText(ciphertext []byte, keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportCipherText(ciphertext []byte, keyID uint32) ([]byte, error) {
 	var ecca []byte
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
@@ -212,7 +212,7 @@ func (h *KeySetUtil) GetKeys() []*tinkpb.Keyset_Key {
 	return h.keysetKeys
 }
 
-func (h *KeySetUtil) GetRawAesGcmKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportAesGcmKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == AesGcmKeyTypeURL {
@@ -230,7 +230,7 @@ func (h *KeySetUtil) GetRawAesGcmKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawAesSivKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportAesSivKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == AesSivKeyTypeURL {
@@ -248,7 +248,7 @@ func (h *KeySetUtil) GetRawAesSivKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawAesCtrHmacAeadKey(keyID uint32) ([]byte, []byte, error) {
+func (h *KeySetUtil) ExportAesCtrHmacAeadKey(keyID uint32) ([]byte, []byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == AesCtrHmacTypeURL {
@@ -266,7 +266,7 @@ func (h *KeySetUtil) GetRawAesCtrHmacAeadKey(keyID uint32) ([]byte, []byte, erro
 	return nil, nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawRsaSsaPkcs1PrivateKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportRsaSsaPkcs1PrivateKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == RsaSsaPkcs1PrivateKeyTypeURL {
@@ -295,7 +295,7 @@ func (h *KeySetUtil) GetRawRsaSsaPkcs1PrivateKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawRsaSsaPkcs1PublicKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportRsaSsaPkcs1PublicKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == RsaSsaPkcs1VerifierTypeURL {
@@ -317,7 +317,7 @@ func (h *KeySetUtil) GetRawRsaSsaPkcs1PublicKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawEcdsaPrivateKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportEcdsaPrivateKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == EcdsaPrivateKeyTypeURL {
@@ -345,7 +345,7 @@ func (h *KeySetUtil) GetRawEcdsaPrivateKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawEcdsaPublicKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportEcdsaPublicKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == EcdsaVerifierTypeURL {
@@ -372,7 +372,7 @@ func (h *KeySetUtil) GetRawEcdsaPublicKey(keyID uint32) ([]byte, error) {
 	return nil, fmt.Errorf("keyID not found in keyset %d", keyID)
 }
 
-func (h *KeySetUtil) GetRawHMACKey(keyID uint32) ([]byte, error) {
+func (h *KeySetUtil) ExportHMACKey(keyID uint32) ([]byte, error) {
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
 			if k.KeyData.TypeUrl == HmacKeyTypeURL {
@@ -409,7 +409,7 @@ type SymmetricKeyType interface {
 	*gcmpb.AesGcmKey | *sivpb.AesSivKey | *aesctrhmacpb.AesCtrHmacAeadKey
 }
 
-func CreateSymmetricKey[T SymmetricKeyType](key T, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+func ImportSymmetricKey[T SymmetricKeyType](key T, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
 	var k protoreflect.ProtoMessage
 	var keyURL string
 	switch t := any(key).(type) {
@@ -489,7 +489,7 @@ func CreateSymmetricKey[T SymmetricKeyType](key T, keyid uint32, format tinkpb.O
 	return bufbytes, nil
 }
 
-func CreateHMACKey(rawKey []byte, keyid uint32, hashType common_go_proto.HashType, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+func ImportHMACKey(rawKey []byte, keyid uint32, hashType common_go_proto.HashType, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
 
 	k := &hmacpb.HmacKey{
 		Version: 0,

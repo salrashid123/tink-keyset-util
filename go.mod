@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/stretchr/testify v1.9.0
+	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	github.com/tink-crypto/tink-go/v2 v2.2.0
 	google.golang.org/protobuf v1.33.0
 )

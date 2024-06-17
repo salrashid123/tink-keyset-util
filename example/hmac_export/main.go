@@ -65,14 +65,14 @@ func main() {
 
 	log.Printf("Tink HMAC: %s", base64.StdEncoding.EncodeToString(ec))
 
-	rk, err := ku.GetRawHMACKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	rk, err := ku.ExportHMACKey(keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("rawKey key: %s", base64.StdEncoding.EncodeToString(rk))
 
-	ecca, err := ku.GetRawCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
+	ecca, err := ku.ExportCipherText(ec, keysetHandle.KeysetInfo().PrimaryKeyId)
 	if err != nil {
 		log.Fatal(err)
 	}
