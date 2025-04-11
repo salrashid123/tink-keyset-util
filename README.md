@@ -61,9 +61,16 @@ For an end-to-end example with AESGCM, see [example/aes_export/insecurekeyset/ma
 
 - **Import Key**
 
-You can also use this library to embed an *external* AES-GCM key *into* a Tink insecure or encrypted keyset.  In other words, if you have a raw aes gcm key, you can embed that into a TINK keyset.  
+You can also use this library to embed an *external* `AES-GCM`, `HMAC`, `RSA` or `ECC` key *into* a Tink insecure or encrypted keyset.  In other words, if you have a raw aes gcm key, you can embed that into a TINK keyset.  
 
-In other words, if you already have an AES-GCM key, you can use this library to create a tink keyset with that key.  see [example/aes_import/insecurekeyset/main.go](example/aes_import/insecurekeyset/main.go)
+For example, if you already have an `AES-GCM` key, you can use this library to create a tink keyset with that key.  
+
+see 
+
+* `AES`: [example/aes_import/insecurekeyset/main.go](example/aes_import/insecurekeyset/main.go)
+* `HMAC`: [example/hmac_import/main.go](example/hmac_import/main.go)
+* `RSA`: [example/rsa_import/main.go](example/rsa_import/main.go)
+* `ECC`: [example/ecc_import/main.go](example/ecc_import/main.go)
 
 ---
 
@@ -127,7 +134,17 @@ To process TINK encoded ciphertext or data
 
 * `ImportHMACKey()`
 
-   Unimplemented but easy to do.  see [tink_samples/external_hmac](https://github.com/salrashid123/tink_samples/tree/main/external_hmac)
+   Import an external HMAC key into a tink keyset
+
+* `ImportPublicKey()`
+
+  Import an external RSA or ECC Public Key into a keyset
+
+
+* `ImportPrivateKey()`
+
+   Import an external RSA or ECC Private Key into a keyset
+   
 
 see the [example/](example/) folder for details
 
@@ -194,8 +211,10 @@ THe following uses [tinkey](https://github.com/tink-crypto/tink-tinkey) to creat
 You can either use the existing keysets or generate your own using [tinkey](https://developers.google.com/tink/install-tinkey).  For encrypted keysets, you certainly need to generate your own keysets.
 
 for reference also see
+
 * [tink_samples](https://github.com/salrashid123/tink_samples)
-* [tink-go-isseue#18: Extract PublicKey from signing keyset](https://github.com/tink-crypto/tink-go/issues/18)
+* [TINK Go TPM extension](https://github.com/salrashid123/tink-go-tpm/)
+* [golang-jwt for Tink Keys](https://github.com/salrashid123/tink-keyset-util)
 
 ### Insecure KeySet
 
@@ -323,7 +342,7 @@ The return value is JSON keyset byte which you can convert to a JSON or Binary k
 
 ```log
 $ go run aes_import/insecurekeyset/main.go 
-2024/04/25 22:49:51 Tink Keyset:
+
  {
 	"primaryKeyId": 4112199248,
 	"key": [
@@ -357,7 +376,7 @@ For an encrypted keyset, supply the kek aead:
 ```bash
 $ go run aes_import/encryptedkeyset/main.go --master-key-uri=$MASTERKEY
 
-2024/04/25 22:24:20 Tink Keyset:
+
  {
 	"encryptedKeyset": "CiQAhitNP4eOsQPhMlF5W9YX4xM3PFl9r/UrmRl3zeqhEFcG+UoSSwCFB1VVAs6MzdRyQmkQm8mLlwkvv0z4cCPozxOUkx85IYqx+mnfwABE4yA7e7gIjIdQdf9kuUvydrKC+mjeD7TpgL9wNSPePRTcOg==",
 	"keysetInfo": {
@@ -392,7 +411,7 @@ We are using raw outputprefix so so that we can easily see the hmac value is wha
 
 ```bash
 $ go run hmac_import/main.go 
-Tink Keyset:
+
  {
 	"primaryKeyId": 4112199248,
 	"key": [
