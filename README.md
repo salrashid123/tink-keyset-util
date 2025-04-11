@@ -246,8 +246,8 @@ $ go run aes_ctr/insecurekeyset/main.go --insecure-key-set keysets/aes_ctr_hmac_
 # $ tinkey create-keyset --key-template=RSA_SSA_PKCS1_3072_SHA256_F4 --out-format=binary --out=keysets/rsa_1_private.bin
 # $ tinkey create-public-keyset --in-format=binary --in=keysets/rsa_1_private.bin --out-format=binary --out=keysets/rsa_1_public.bin
 
-$ go run rsa/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_private.bin 
-$ go run rsa/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_public.bin 
+$ go run rsa_export/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_private.bin 
+$ go run rsa_export/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_public.bin 
 ```
 
 - `ECDSA_P256`
@@ -256,8 +256,8 @@ $ go run rsa/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_public.bin
 # $ tinkey create-keyset --key-template=ECDSA_P256 --out-format=binary --out=keysets/ecc_1_private.bin
 # $ tinkey create-public-keyset --in=keysets/ecc_1_private.bin --in-format=binary --out-format=binary --out=keysets/ecc_1_public.bin
 
-$ go run ecc/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_private.bin 
-$ go run ecc/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_public.bin 
+$ go run ecc_export/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_private.bin 
+$ go run ecc_export/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_public.bin 
 ```
 
 - `HMAC_SHA256_256BITTAG`
@@ -412,3 +412,314 @@ Tink Keyset:
 HMAC: 7c50506d993b4a10e5ae6b33ca951bf2b8c8ac399e0a34026bb0ac469bea3de2
 ```
 
+### Importing existing Asymmetric Keys
+
+#### Import RSA Public PEM to Tink RsaSsaPkcs1PublicKey
+
+The following will import an RSA Public Key into a Tink Keyset
+
+Specifically, to compare end-to-end, we'll extract the rsa key from `keysets/rsa_1_public.bin` and then generate a JSON keyset from it again
+
+First print the RSA Key using the export function:
+
+```bash
+$ go run rsa_export/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_public.bin 
+-----BEGIN RSA PUBLIC KEY-----
+MIIBigKCAYEA1cbMiupc8ENdRvW3Sw6Bkalgk4nL1Da8dsKanhe5aBs/pitOcTaf
+Iw49CCyqR7Ld6g2JezUNARk+i8jk5J0C6jGpNmZKqgQd6j/94VQpjiesYsIJiMcJ
+jSsrbwxn1so/+8YE6BQ6uzzFZVh7s6bYFpjPsKYKVgxbJ516+gijbNt5IgIYMf6i
+R8vNXWXpl/AVDvbk/51HFrgFV8OrkziIowYAILsgXd8b/NBzuwHjnD153FeJ8Dah
+1uScDp2xfkQ97TNgnKqprjyhJqVkIBhrYkgyYrWmjwywNGdwfjqAo2j1CfiTm/I+
+PF9wPovauyqUJG0zLQTirLZRuZYrcMYNDq+JndEXjv0uLuZVjQGFBUUkpDTwy56v
+T6h1aoImOpoqYMGkE/S/pbLc1bv7vnepJfskoHIdinjhX5uIU7F7RXjBMEZANtz+
+6nv6fk3eztbRpGnpcyQHCz8WF05fTVD8UQM15kFqVMaYPcaTcKBbmaeiJs6Hr9Hw
+7hZB0q2rRpVrAgMBAAE=
+-----END RSA PUBLIC KEY-----
+```
+
+The RSA key is saved to a file at `keysets/rsa_public.pem`
+
+Now import the PEM file and print it as a keyset:
+
+```bash
+$ go run rsa_import/insecurekeyset/public/main.go -keyFile keysets/rsa_public.pem
+
+{
+	"primaryKeyId": 4198955199,
+	"key": [
+		{
+			"keyData": {
+				"typeUrl": "type.googleapis.com/google.crypto.tink.RsaSsaPkcs1PublicKey",
+				"value": "EgIIAxqBAwDVxsyK6lzwQ11G9bdLDoGRqWCTicvUNrx2wpqeF7loGz+mK05xNp8jDj0ILKpHst3qDYl7NQ0BGT6LyOTknQLqMak2ZkqqBB3qP/3hVCmOJ6xiwgmIxwmNKytvDGfWyj/7xgToFDq7PMVlWHuzptgWmM+wpgpWDFsnnXr6CKNs23kiAhgx/qJHy81dZemX8BUO9uT/nUcWuAVXw6uTOIijBgAguyBd3xv80HO7AeOcPXncV4nwNqHW5JwOnbF+RD3tM2CcqqmuPKEmpWQgGGtiSDJitaaPDLA0Z3B+OoCjaPUJ+JOb8j48X3A+i9q7KpQkbTMtBOKstlG5litwxg0Or4md0ReO/S4u5lWNAYUFRSSkNPDLnq9PqHVqgiY6mipgwaQT9L+lstzVu/u+d6kl+ySgch2KeOFfm4hTsXtFeMEwRkA23P7qe/p+Td7O1tGkaelzJAcLPxYXTl9NUPxRAzXmQWpUxpg9xpNwoFuZp6Imzoev0fDuFkHSratGlWsiAwEAAQ==",
+				"keyMaterialType": "ASYMMETRIC_PUBLIC"
+			},
+			"status": "ENABLED",
+			"keyId": 4198955199,
+			"outputPrefixType": "TINK"
+		}
+	]
+}
+```
+
+Now compare the keyset to what the tinkey prints out directly from `keysets/rsa_1_public.bin`.  Both JSON Keysets are the same
+
+```bash
+$ tinkey convert-keyset --in-format=binary --in=keysets/rsa_1_public.bin --out-format=json  | jq '.'
+{
+  "primaryKeyId": 4198955199,
+  "key": [
+    {
+      "keyData": {
+        "typeUrl": "type.googleapis.com/google.crypto.tink.RsaSsaPkcs1PublicKey",
+        "value": "EgIIAxqBAwDVxsyK6lzwQ11G9bdLDoGRqWCTicvUNrx2wpqeF7loGz+mK05xNp8jDj0ILKpHst3qDYl7NQ0BGT6LyOTknQLqMak2ZkqqBB3qP/3hVCmOJ6xiwgmIxwmNKytvDGfWyj/7xgToFDq7PMVlWHuzptgWmM+wpgpWDFsnnXr6CKNs23kiAhgx/qJHy81dZemX8BUO9uT/nUcWuAVXw6uTOIijBgAguyBd3xv80HO7AeOcPXncV4nwNqHW5JwOnbF+RD3tM2CcqqmuPKEmpWQgGGtiSDJitaaPDLA0Z3B+OoCjaPUJ+JOb8j48X3A+i9q7KpQkbTMtBOKstlG5litwxg0Or4md0ReO/S4u5lWNAYUFRSSkNPDLnq9PqHVqgiY6mipgwaQT9L+lstzVu/u+d6kl+ySgch2KeOFfm4hTsXtFeMEwRkA23P7qe/p+Td7O1tGkaelzJAcLPxYXTl9NUPxRAzXmQWpUxpg9xpNwoFuZp6Imzoev0fDuFkHSratGlWsiAwEAAQ==",
+        "keyMaterialType": "ASYMMETRIC_PUBLIC"
+      },
+      "status": "ENABLED",
+      "keyId": 4198955199,
+      "outputPrefixType": "TINK"
+    }
+  ]
+}
+```
+
+**WARNING** for some reason, the only way i got it to work was to prepend a single 0 byte to the public keys:
+
+```golang
+	k := &rsppb.RsaSsaPkcs1PublicKey{
+		Version: 0,
+		Params: &rsppb.RsaSsaPkcs1Params{
+			HashType: common_go_proto.HashType_SHA256,
+		},
+		N: append([]byte{0}, rk.N.Bytes()...),   // <<<<<<<<
+		E: big.NewInt(int64(rk.E)).Bytes(),
+	}
+```
+
+Why? i have no idea and only figured it out by looking at the proto encoding...this is a TODO to understand this
+
+#### Import RSA Private PEM to Tink RsaSsaPkcs1PublicKey
+
+As an end-to-end, first print the RSA Private Key.  This key happens to be the one inside the sample here: `keysets/rsa_1_private.bin ` 
+
+```bash
+$ go run rsa_export/insecurekeyset/main.go --insecure-key-set keysets/rsa_1_private.bin 
+
+-----BEGIN RSA PRIVATE KEY-----
+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
+-----END RSA PRIVATE KEY-----
+```
+
+Now import the RSA PEM format
+
+```bash
+$ go run rsa_import/insecurekeyset/private/main.go -keyFile keysets/rsa_private.pem 
+{
+	"primaryKeyId": 4198955199,
+	"key": [
+		{
+			"keyData": {
+				"typeUrl": "type.googleapis.com/google.crypto.tink.RsaSsaPkcs1PrivateKey",
+				"value": "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",
+				"keyMaterialType": "ASYMMETRIC_PRIVATE"
+			},
+			"status": "ENABLED",
+			"keyId": 4198955199,
+			"outputPrefixType": "TINK"
+		}
+	]
+}
+```
+
+which is the same output key:
+
+```bash
+tinkey convert-keyset --in-format=binary --in=keysets/rsa_1_private.bin --out-format=json  | jq '.'
+
+{
+  "primaryKeyId": 4198955199,
+  "key": [
+    {
+      "keyData": {
+        "typeUrl": "type.googleapis.com/google.crypto.tink.RsaSsaPkcs1PrivateKey",
+        "value": "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",
+        "keyMaterialType": "ASYMMETRIC_PRIVATE"
+      },
+      "status": "ENABLED",
+      "keyId": 4198955199,
+      "outputPrefixType": "TINK"
+    }
+  ]
+}
+```
+
+#### Import ECC Public PEM to Tink EcdsaPublicKey
+
+To import an ECC Public key into a TinkKeySet, first print out the key we're using.  For this end-to-end, we're using the key thats actually inside `keysets/ecc_1_public.bin`
+
+```bash
+$ go run ecc_export/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_public.bin 
+
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEeKFBtNDgzgr1cuLLtSJlDzmal39Y
+BGN5LPIuQk1px5zw5JoHU98I9w9p6ABraP5QAGnNWBcC+ngxC/PcyazQdA==
+-----END PUBLIC KEY-----
+
+```
+
+The ECC key is saved to a file at `keysets/ecc_public.pem`
+
+Now import the PEM file and print it as a keyset:
+
+```bash
+$ go run ecc_import/insecurekeyset/public/main.go -keyFile keysets/ecc_public.pem
+
+{
+	"primaryKeyId": 1957864605,
+	"key": [
+		{
+			"keyData": {
+				"typeUrl": "type.googleapis.com/google.crypto.tink.EcdsaPublicKey",
+				"value": "EgYIAxACGAIaIHihQbTQ4M4K9XLiy7UiZQ85mpd/WARjeSzyLkJNacecIiEA8OSaB1PfCPcPaegAa2j+UABpzVgXAvp4MQvz3Mms0HQ=",
+				"keyMaterialType": "ASYMMETRIC_PUBLIC"
+			},
+			"status": "ENABLED",
+			"keyId": 1957864605,
+			"outputPrefixType": "TINK"
+		}
+	]
+}
+
+```
+
+Now compare the keyset to what the tinkey prints out directly from `keysets/ecc_1_public.bin`.  Both JSON Keysets are the same
+
+```bash
+$ tinkey convert-keyset --in-format=binary --in=keysets/ecc_1_public.bin --out-format=json  | jq '.'
+
+{
+  "primaryKeyId": 1957864605,
+  "key": [
+    {
+      "keyData": {
+        "typeUrl": "type.googleapis.com/google.crypto.tink.EcdsaPublicKey",
+        "value": "EgYIAxACGAIaIHihQbTQ4M4K9XLiy7UiZQ85mpd/WARjeSzyLkJNacecIiEA8OSaB1PfCPcPaegAa2j+UABpzVgXAvp4MQvz3Mms0HQ=",
+        "keyMaterialType": "ASYMMETRIC_PUBLIC"
+      },
+      "status": "ENABLED",
+      "keyId": 1957864605,
+      "outputPrefixType": "TINK"
+    }
+  ]
+}
+```
+
+**WARNING** for some reason, the only way i got it to work was to prepend a single 0 byte to the public keys:
+
+```golang
+	k := &ecdsapb.EcdsaPublicKey{
+		Version: 0,
+		Params: &ecdsapb.EcdsaParams{
+			HashType: common_go_proto.HashType_SHA256,
+			Curve:    common_go_proto.EllipticCurveType_NIST_P256,
+			Encoding: ecdsapb.EcdsaSignatureEncoding_DER,
+		},
+		X: ecdsaPub.X.Bytes(),
+		Y: append([]byte{0}, ecdsaPub.Y.Bytes()...),  // <<<<<<<<<<<<
+	}
+```
+
+Why? i have no idea and only figured it out by looking at the proto encoding...this is a TODO to understand this
+
+
+#### Import ECC Private PEM to Tink EcdsaPrivateKey
+
+To import the private key, we'll again use the PEM format from the sample keyset we have `keysets/ecc_1_private.bin ` 
+
+```bash
+$  go run ecc_export/insecurekeyset/main.go --insecure-key-set keysets/ecc_1_private.bin 
+
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIEXRWDDPHTUsOa6FxX2/EzdOIRjQtpLX3L69GuLZxxc7oAoGCCqGSM49
+AwEHoUQDQgAEI+vmq6jr5qUfMBF98xqVuulDb76hDRjM2HlESvqk5ALXj4Vv19PX
+Q2ucbNKLJvQWdlqQJZNO5XdqTEwu1551Ug==
+-----END EC PRIVATE KEY-----
+```
+
+Now read the PEM and create the keyset
+
+```bash
+$ go run ecc_import/insecurekeyset/private/main.go -keyFile keysets/ecc_private.pem
+
+{
+	"primaryKeyId": 1957864605,
+	"key": [
+		{
+			"keyData": {
+				"typeUrl": "type.googleapis.com/google.crypto.tink.EcdsaPrivateKey",
+				"value": "Ek0SBggDEAIYAhogeKFBtNDgzgr1cuLLtSJlDzmal39YBGN5LPIuQk1px5wiIQDw5JoHU98I9w9p6ABraP5QAGnNWBcC+ngxC/PcyazQdBogRdFYMM8dNSw5roXFfb8TN04hGNC2ktfcvr0a4tnHFzs=",
+				"keyMaterialType": "ASYMMETRIC_PRIVATE"
+			},
+			"status": "ENABLED",
+			"keyId": 1957864605,
+			"outputPrefixType": "TINK"
+		}
+	]
+}
+```
+
+Notice the keyset is the same as what we're printing directly.
+
+```bash
+$ tinkey convert-keyset --in-format=binary --in=keysets/ecc_1_private.bin --out-format=json  | jq '.'
+{
+  "primaryKeyId": 1957864605,
+  "key": [
+    {
+      "keyData": {
+        "typeUrl": "type.googleapis.com/google.crypto.tink.EcdsaPrivateKey",
+        "value": "Ek0SBggDEAIYAhogeKFBtNDgzgr1cuLLtSJlDzmal39YBGN5LPIuQk1px5wiIQDw5JoHU98I9w9p6ABraP5QAGnNWBcC+ngxC/PcyazQdBogRdFYMM8dNSw5roXFfb8TN04hGNC2ktfcvr0a4tnHFzs=",
+        "keyMaterialType": "ASYMMETRIC_PRIVATE"
+      },
+      "status": "ENABLED",
+      "keyId": 1957864605,
+      "outputPrefixType": "TINK"
+    }
+  ]
+}
+```

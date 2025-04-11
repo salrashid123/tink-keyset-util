@@ -63,14 +63,29 @@ func main() {
 		}
 
 		if ku.GetKeySetTypeURL() == keysetutil.EcdsaVerifierTypeURL {
+
+			p, err := x509.ParsePKIXPublicKey(pk)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// key, ok := p.(*ecdsa.PublicKey)
+			// if !ok {
+			// 	log.Fatal("could not convert key")
+			// }
+			publicKeyBytes, err := x509.MarshalPKIXPublicKey(p)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			pemdata := pem.EncodeToMemory(
 				&pem.Block{
 					Type:  "PUBLIC KEY",
-					Bytes: pk,
+					Bytes: publicKeyBytes,
 				},
 			)
 
-			log.Printf("ECC Key: %s\n", string(pemdata))
+			log.Printf("ECC Key: \n%s\n", string(pemdata))
 		}
 	} else if ku.GetKeySetTypeURL() == keysetutil.EcdsaPrivateKeyTypeURL {
 
@@ -87,7 +102,7 @@ func main() {
 				},
 			)
 
-			log.Printf("ECC Key: %s\n", string(pemdata))
+			log.Printf("ECC Private Key: \n%s\n", string(pemdata))
 
 			s, err := signature.NewSigner(keysetHandle)
 			if err != nil {
@@ -105,6 +120,18 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			publicKeyBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			publicKeyPEM := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: publicKeyBytes,
+			}
+
+			log.Printf("ECDSA PublicKey: \n%s\n", string(pem.EncodeToMemory(publicKeyPEM)))
 
 			digest := sha256.Sum256(msg)
 

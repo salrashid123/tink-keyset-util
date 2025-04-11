@@ -6,11 +6,14 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
+	"math/big"
 	"os"
 	"testing"
 
@@ -20,6 +23,9 @@ import (
 	"github.com/tink-crypto/tink-go/v2/keyset"
 	"github.com/tink-crypto/tink-go/v2/mac"
 	gcmpb "github.com/tink-crypto/tink-go/v2/proto/aes_gcm_go_proto"
+	common_go_proto "github.com/tink-crypto/tink-go/v2/proto/common_go_proto"
+	ecdsapb "github.com/tink-crypto/tink-go/v2/proto/ecdsa_go_proto"
+	rsppb "github.com/tink-crypto/tink-go/v2/proto/rsa_ssa_pkcs1_go_proto"
 	tinkpb "github.com/tink-crypto/tink-go/v2/proto/tink_go_proto"
 	"github.com/tink-crypto/tink-go/v2/signature"
 )
@@ -30,7 +36,13 @@ const (
 	AES_GCM_JSON_KEYSET   = "example/keysets/aes_gcm_1.json"
 	AES_GCM_BINARY_KEYSET = "example/keysets/aes_gcm_1.bin"
 	RSA_BINARY_KEYSET     = "example/keysets/rsa_1_private.bin"
+	ECC_BINARY_KEYSET     = "example/keysets/ecc_1_private.bin"
 	HMAC_BINARY_KEYSET    = "example/keysets/hmac_bittag.bin"
+
+	RSA_PUBLIC_PEM_FILE  = "example/keysets/rsa_public.pem"
+	RSA_PRIVATE_PEM_FILE = "example/keysets/rsa_private.pem"
+	ECC_PUBLIC_PEM_FILE  = "example/keysets/ecc_public.pem"
+	ECC_PRIVATE_PEM_FILE = "example/keysets/ecc_public.pem"
 )
 
 func TestReadJSONKeyset(t *testing.T) {
@@ -213,6 +225,99 @@ func TestRSASignatureExport(t *testing.T) {
 
 	err = rsa.VerifyPKCS1v15(&key.PublicKey, crypto.SHA256, digest[:], st)
 	require.NoError(t, err)
+}
+
+func TestECCSignatureExport(t *testing.T) {
+
+	keysetBytes, err := os.ReadFile(ECC_BINARY_KEYSET)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	ku, err := NewTinkKeySetUtil(ctx, &KeySetUtilConfig{
+		KeySetBytes: keysetBytes,
+	})
+	require.NoError(t, err)
+
+	keysetReader := keyset.NewBinaryReader(bytes.NewReader(keysetBytes))
+
+	keysetHandle, err := insecurecleartextkeyset.Read(keysetReader)
+	require.NoError(t, err)
+
+	s, err := signature.NewSigner(keysetHandle)
+	require.NoError(t, err)
+
+	rk, err := ku.ExportEcdsaPrivateKey(keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	key, err := x509.ParseECPrivateKey(rk)
+	require.NoError(t, err)
+
+	msg := []byte("this data needs to be signed")
+
+	sig, err := s.Sign(msg)
+	require.NoError(t, err)
+
+	digest := sha256.Sum256(msg)
+
+	st, err := ku.ExportCipherText(sig, keysetHandle.KeysetInfo().PrimaryKeyId)
+	require.NoError(t, err)
+
+	ok := ecdsa.VerifyASN1(&key.PublicKey, digest[:], st)
+	require.True(t, ok)
+}
+
+func TestRSAExportImportPublic(t *testing.T) {
+
+	pubPEMBytes, err := os.ReadFile(RSA_PUBLIC_PEM_FILE)
+	require.NoError(t, err)
+
+	block, _ := pem.Decode(pubPEMBytes)
+	rk, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	require.NoError(t, err)
+
+	k := &rsppb.RsaSsaPkcs1PublicKey{
+		Version: 0,
+		Params: &rsppb.RsaSsaPkcs1Params{
+			HashType: common_go_proto.HashType_SHA256,
+		},
+		N: append([]byte{0}, rk.N.Bytes()...),
+		E: big.NewInt(int64(rk.E)).Bytes(),
+	}
+
+	_, err = ImportPublicKey(k, uint32(4198955199), tinkpb.OutputPrefixType_TINK, nil)
+	require.NoError(t, err)
+
+	// todo, unmarshal the bytes into a keyset and actually do something with it
+}
+
+func TestECCExportImportPublic(t *testing.T) {
+
+	pubPEMBytes, err := os.ReadFile(ECC_PUBLIC_PEM_FILE)
+	require.NoError(t, err)
+
+	block, _ := pem.Decode(pubPEMBytes)
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	require.NoError(t, err)
+	ecdsaPub, ok := pub.(*ecdsa.PublicKey)
+	require.True(t, ok)
+
+	k := &ecdsapb.EcdsaPublicKey{
+		Version: 0,
+		Params: &ecdsapb.EcdsaParams{
+			HashType: common_go_proto.HashType_SHA256,
+			Curve:    common_go_proto.EllipticCurveType_NIST_P256,
+			Encoding: ecdsapb.EcdsaSignatureEncoding_DER,
+		},
+		X: ecdsaPub.X.Bytes(),
+		Y: append([]byte{0}, ecdsaPub.Y.Bytes()...), // ecdsaPub.Y.Bytes(),
+	}
+
+	_, err = ImportPublicKey(k, uint32(1957864605), tinkpb.OutputPrefixType_TINK, nil)
+	require.NoError(t, err)
+
+	// todo, unmarshal the bytes into a keyset and actually do something with
+	// alternatively, do the end  to end and push the returned bytes into
 }
 
 func TestHMACExport(t *testing.T) {

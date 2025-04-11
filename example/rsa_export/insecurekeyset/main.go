@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	insecureKeySetFile = flag.String("insecure-key-set", "", "Parse a cleartext keyset")
+	insecureKeySetFile = flag.String("insecure-key-set", "keysets/rsa_1_public.bin", "Parse a cleartext keyset")
 )
 
 func main() {
@@ -61,14 +61,24 @@ func main() {
 		}
 
 		if ku.GetKeySetTypeURL() == keysetutil.RsaSsaPkcs1VerifierTypeURL {
-			pemdata := pem.EncodeToMemory(
-				&pem.Block{
-					Type:  "RSA PUBLIC KEY",
-					Bytes: pk,
-				},
-			)
 
-			log.Printf("RSA Key: \n%s\n", string(pemdata))
+			p, err := x509.ParsePKIXPublicKey(pk)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			key, ok := p.(*rsa.PublicKey)
+			if !ok {
+				log.Fatal("could not convert key")
+			}
+			publicKeyBytes := x509.MarshalPKCS1PublicKey(key)
+
+			publicKeyPEM := &pem.Block{
+				Type:  "RSA PUBLIC KEY",
+				Bytes: publicKeyBytes,
+			}
+
+			log.Printf("RSA PublicKey: \n%s\n", string(pem.EncodeToMemory(publicKeyPEM)))
 		}
 	} else if ku.GetKeySetTypeURL() == keysetutil.RsaSsaPkcs1PrivateKeyTypeURL {
 
@@ -110,6 +120,15 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			publicKeyBytes := x509.MarshalPKCS1PublicKey(&key.PublicKey)
+
+			publicKeyPEM := &pem.Block{
+				Type:  "RSA PUBLIC KEY",
+				Bytes: publicKeyBytes,
+			}
+
+			log.Printf("RSA PublicKey: \n%s\n", string(pem.EncodeToMemory(publicKeyPEM)))
 
 			err = rsa.VerifyPKCS1v15(&key.PublicKey, crypto.SHA256, digest[:], st)
 			if err != nil {

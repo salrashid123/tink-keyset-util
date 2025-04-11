@@ -562,3 +562,167 @@ func ImportHMACKey(rawKey []byte, keyid uint32, hashType common_go_proto.HashTyp
 	}
 	return bufbytes, nil
 }
+
+// only allow certain interfaces through
+type PublicKeyType interface {
+	*rsppb.RsaSsaPkcs1PublicKey | *ecdsapb.EcdsaPublicKey
+}
+
+func ImportPublicKey[T PublicKeyType](key T, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+	var k protoreflect.ProtoMessage
+	var keyURL string
+	switch t := any(key).(type) {
+	case *rsppb.RsaSsaPkcs1PublicKey:
+		keyURL = RsaSsaPkcs1VerifierTypeURL
+		k = t
+	case *ecdsapb.EcdsaPublicKey:
+		keyURL = EcdsaVerifierTypeURL
+		k = t
+	default:
+		return nil, fmt.Errorf("asymmetric keytype must be one of RsaSsaPkcs1PublicKey, EcdsaPublicKey got %s", t)
+	}
+
+	keyserialized, err := proto.Marshal(k)
+	if err != nil {
+		return nil, err
+	}
+
+	var bufbytes []byte
+	if kekaead == nil {
+		keysetKey := &tinkpb.Keyset_Key{
+			KeyData: &tinkpb.KeyData{
+				TypeUrl:         keyURL,
+				KeyMaterialType: tinkpb.KeyData_ASYMMETRIC_PUBLIC,
+				Value:           keyserialized,
+			},
+			KeyId:            keyid,
+			Status:           tinkpb.KeyStatusType_ENABLED,
+			OutputPrefixType: format,
+		}
+
+		ks := &tinkpb.Keyset{
+			PrimaryKeyId: keyid,
+			Key:          []*tinkpb.Keyset_Key{keysetKey},
+		}
+
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.Write(ks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+	} else {
+
+		ciphertext, err := kekaead.Encrypt(keyserialized, []byte(""))
+		if err != nil {
+			return nil, err
+		}
+
+		ksi := &tinkpb.KeysetInfo{
+			PrimaryKeyId: keyid,
+			KeyInfo: []*tinkpb.KeysetInfo_KeyInfo{
+				{
+					TypeUrl:          keyURL,
+					Status:           tinkpb.KeyStatusType_ENABLED,
+					KeyId:            keyid,
+					OutputPrefixType: format,
+				},
+			},
+		}
+
+		eks := &tinkpb.EncryptedKeyset{
+			EncryptedKeyset: ciphertext,
+			KeysetInfo:      ksi,
+		}
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.WriteEncrypted(eks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+
+	}
+	return bufbytes, nil
+}
+
+// only allow certain interfaces through
+type PravateKeyType interface {
+	*rsppb.RsaSsaPkcs1PrivateKey | *ecdsapb.EcdsaPrivateKey
+}
+
+func ImportPrivateKey[T PravateKeyType](key T, keyid uint32, format tinkpb.OutputPrefixType, kekaead tink.AEAD) ([]byte, error) {
+	var k protoreflect.ProtoMessage
+	var keyURL string
+	switch t := any(key).(type) {
+	case *rsppb.RsaSsaPkcs1PrivateKey:
+		keyURL = RsaSsaPkcs1PrivateKeyTypeURL
+		k = t
+	case *ecdsapb.EcdsaPrivateKey:
+		keyURL = EcdsaPrivateKeyTypeURL
+		k = t
+	default:
+		return nil, fmt.Errorf("asymmetric keytype must be one of RsaSsaPkcs1PublicKey, EcdsaPublicKey got %s", t)
+	}
+
+	keyserialized, err := proto.Marshal(k)
+	if err != nil {
+		return nil, err
+	}
+
+	var bufbytes []byte
+	if kekaead == nil {
+		keysetKey := &tinkpb.Keyset_Key{
+			KeyData: &tinkpb.KeyData{
+				TypeUrl:         keyURL,
+				KeyMaterialType: tinkpb.KeyData_ASYMMETRIC_PRIVATE,
+				Value:           keyserialized,
+			},
+			KeyId:            keyid,
+			Status:           tinkpb.KeyStatusType_ENABLED,
+			OutputPrefixType: format,
+		}
+
+		ks := &tinkpb.Keyset{
+			PrimaryKeyId: keyid,
+			Key:          []*tinkpb.Keyset_Key{keysetKey},
+		}
+
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.Write(ks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+	} else {
+
+		ciphertext, err := kekaead.Encrypt(keyserialized, []byte(""))
+		if err != nil {
+			return nil, err
+		}
+
+		ksi := &tinkpb.KeysetInfo{
+			PrimaryKeyId: keyid,
+			KeyInfo: []*tinkpb.KeysetInfo_KeyInfo{
+				{
+					TypeUrl:          keyURL,
+					Status:           tinkpb.KeyStatusType_ENABLED,
+					KeyId:            keyid,
+					OutputPrefixType: format,
+				},
+			},
+		}
+
+		eks := &tinkpb.EncryptedKeyset{
+			EncryptedKeyset: ciphertext,
+			KeysetInfo:      ksi,
+		}
+		buf := new(bytes.Buffer)
+		w := keyset.NewJSONWriter(buf)
+		if err := w.WriteEncrypted(eks); err != nil {
+			return nil, err
+		}
+		bufbytes = buf.Bytes()
+
+	}
+	return bufbytes, nil
+}
