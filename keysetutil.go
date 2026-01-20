@@ -14,11 +14,6 @@ import (
 
 	"github.com/tink-crypto/tink-go/v2/insecurecleartextkeyset"
 	"github.com/tink-crypto/tink-go/v2/keyset"
-	"github.com/tink-crypto/tink-go/v2/tink"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
-
 	aesctrhmacpb "github.com/tink-crypto/tink-go/v2/proto/aes_ctr_hmac_aead_go_proto"
 	gcmpb "github.com/tink-crypto/tink-go/v2/proto/aes_gcm_go_proto"
 	sivpb "github.com/tink-crypto/tink-go/v2/proto/aes_siv_go_proto"
@@ -28,6 +23,10 @@ import (
 	hmacpb "github.com/tink-crypto/tink-go/v2/proto/hmac_go_proto"
 	rsppb "github.com/tink-crypto/tink-go/v2/proto/rsa_ssa_pkcs1_go_proto"
 	tinkpb "github.com/tink-crypto/tink-go/v2/proto/tink_go_proto"
+	"github.com/tink-crypto/tink-go/v2/tink"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type KeySetUtilConfig struct {
@@ -183,12 +182,13 @@ func (h *KeySetUtil) ExportCipherText(ciphertext []byte, keyID uint32) ([]byte, 
 	var ecca []byte
 	for _, k := range h.keysetKeys {
 		if k.KeyId == keyID {
-			if k.OutputPrefixType == tinkpb.OutputPrefixType_TINK {
+			switch k.OutputPrefixType {
+			case tinkpb.OutputPrefixType_TINK:
 				pf := createOutputPrefix(tinkPrefixSize, tinkStartByte, keyID)
 				ecca = ciphertext[len([]byte(pf)):]
-			} else if k.OutputPrefixType == tinkpb.OutputPrefixType_RAW {
+			case tinkpb.OutputPrefixType_RAW:
 				ecca = ciphertext
-			} else {
+			default:
 				return nil, fmt.Errorf("unsupported outputprefix %s", k.OutputPrefixType.String())
 			}
 			return ecca, nil
@@ -278,13 +278,22 @@ func (h *KeySetUtil) ExportRsaSsaPkcs1PrivateKey(keyID uint32) ([]byte, error) {
 				privKey := &rsa.PrivateKey{
 					D: bytesToBigInt(key.GetD()),
 					PublicKey: rsa.PublicKey{
-						N: bytesToBigInt(key.GetPublicKey().GetN()),
-						E: int(bytesToBigInt(key.GetPublicKey().GetE()).Int64()),
+						N: bytesToBigInt(key.PublicKey.N),
+						E: int(bytesToBigInt(key.PublicKey.E).Int64()),
 					},
 					Primes: []*big.Int{
-						bytesToBigInt(key.GetP()),
-						bytesToBigInt(key.GetQ()),
+						new(big.Int).SetBytes(key.GetP()),
+						new(big.Int).SetBytes(key.GetQ()),
 					},
+					Precomputed: rsa.PrecomputedValues{
+						Dp:   bytesToBigInt(key.GetDp()),
+						Dq:   bytesToBigInt(key.GetDq()),
+						Qinv: bytesToBigInt(key.GetCrt()),
+					},
+				}
+				err := privKey.Validate()
+				if err != nil {
+					return nil, fmt.Errorf("error validating private key %v", err)
 				}
 				return x509.MarshalPKCS1PrivateKey(privKey), nil
 			} else {
